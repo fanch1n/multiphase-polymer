@@ -1,0 +1,11 @@
+*~
+__pycache__/
+*.d
+*.o
+*.so
+
+cfh.c
+Makefile.inc
+
+*.svg
+gof.py
