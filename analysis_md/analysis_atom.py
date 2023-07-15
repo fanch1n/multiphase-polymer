@@ -5,52 +5,48 @@ import json
 import os
 from collections import Counter
 
-def read_atom_file(filename):
-    '''
-    read in .atom file
-    assume the data had the format [atom_id mol_id type xu yu zu]
-    '''
-    data = {}
-    with open(filename, 'r') as f:
-        print("reading_traj_file input:", filename)
-        cnt = 0
-        atom_data = []
-        for line in f:
-            contents = line.split()
-            if 'TIMESTEP' in contents:
-                #if cnt > 0 and cnt % freq == 0:
-                #    a = np.array(atom_data)
-                #    Ls = np.array(box)[:, 1] - np.array(box)[:, 0]
-                #    bins = np.arange(0, Ls[-1], 3)
-                cnt += 1
-                nchains = 0
-                atom_data = []
-                box = []
-                pos = False
-                bx = False
-                newstep = True
-                natoms = False
-            if newstep and not bx and not natoms:
-                if len(contents) == 1:
-                    timestep = int(contents[0])
-            if 'BOX' in contents:
-                bx = True
-            elif 'type' in contents:
-                pos = True
-                bx = False
-            else:
-                if len(contents) > 0 and bx:
-                    box.append([float(s) for s in contents])
-                if len(contents) > 0 and pos:
-                    atom_id, mol_id = int(contents[0]), int(contents[1])
-                    info = [atom_id, mol_id] + [float(s) for s in contents[2:]]
-                    nchains = max(nchains, mol_id)
-                    atom_data.append(info)
-    data['atom'] = np.array(atom_data)
-    data['box'] = box
-    data['n_mol'] = nchains
-
-    return data
+#def read_atom_file(filename):
+#    '''
+#    read in .atom file
+#    assume the data had the format [atom_id mol_id type xu yu zu]
+#    '''
+#    data = {}
+#    with open(filename, 'r') as f:
+#        print("reading_traj_file input:", filename)
+#        cnt = 0
+#        atom_data = []
+#        for line in f:
+#            contents = line.split()
+#            if 'TIMESTEP' in contents:
+#                cnt += 1
+#                nchains = 0
+#                atom_data = []
+#                box = []
+#                pos = False
+#                bx = False
+#                newstep = True
+#                natoms = False
+#            if newstep and not bx and not natoms:
+#                if len(contents) == 1:
+#                    timestep = int(contents[0])
+#            if 'BOX' in contents:
+#                bx = True
+#            elif 'type' in contents:
+#                pos = True
+#                bx = False
+#            else:
+#                if len(contents) > 0 and bx:
+#                    box.append([float(s) for s in contents])
+#                if len(contents) > 0 and pos:
+#                    atom_id, mol_id = int(contents[0]), int(contents[1])
+#                    info = [atom_id, mol_id] + [float(s) for s in contents[2:]]
+#                    nchains = max(nchains, mol_id)
+#                    atom_data.append(info)
+#    data['atom'] = np.array(atom_data)
+#    data['box'] = box
+#    data['n_mol'] = nchains
+#
+#    return data
 
 
 def groupby_molID(atom_data):
@@ -89,13 +85,18 @@ def wrap(pos, Ls):
 def unwrap(pos, Lz):
     return pos - np.floor(pos / Lz) * Lz
 
-
 def unwrap_indx(index, mid):
     return list(index[mid:]) + list(index[:mid])
 
 def get_CoM(mol_data):
     assert np.array(mol_data).shape[1] == 3
     return np.average(np.array(mol_data), axis=0)
+
+def get_shiftAtoms(data, dshift, Ls):
+    shifted_atoms = np.array(data)
+    for i in range(data.shape[0]):
+        shifted_atoms[i, -3:] = wrap(data[i, -3:] + dshift, Ls)
+    return shifted_atoms
 
 
 def ref_compositions(seqs, phase_description):
@@ -186,43 +187,4 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, chain_id_divider, bins):
     #res['dom'] = compute_degree_of_mixing(ops[:,2], ops[:,3], rhos, 0.1)
 
     return res
-    # return ops, rhos, compos, dom
-
-
-
-
-# if __name__ == '__main__':
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('input', type=str, help="input .json file containing phase descriptions")
-#     parser.add_argument('alpha', type=int, help="label index for alpha phase")
-#     parser.add_argument('beta', type=int, help="label index for beta phase")
-#     parser.add_argument('trajfile', type=str, help="dump.lammpstrj file for processing")
-#     parser.add_argument("--freq", type=int, default=10, help="frequency for processing the trajectory [10]")
-#     parser.add_argument("--id-divider", type=int, default=0, help="mol_id < id-divider phase alpha else phase beta [0]")
-#     parser.add_argument("--output", type=str, help="prefix for output files")
-#     parser.add_argument("--makeplots", action='store_true', help="plot the time series to output.pdf [False]")
-#     clargs = parser.parse_args()
-
-#     if clargs.output is not None:
-#         output_name = "%s-%d%d-proc.npy" % (clargs.output, clargs.alpha, clargs.beta)
-#     else:
-#         output_name = None
-
-#     with open(clargs.input, 'r') as p:
-#         phases = json.load(p)
-
-#     descript = []
-#     for i in phases['phases'].keys():
-#         descript.append(ref_compositions(phases['phases'][str(i)], phases))
-#     print(np.array(descript))
-
-#     if clargs.id_divider == 0:
-#         chain_id_divider = sum([phase_description['phases'][str(alpha)][key] \
-#             for key in phase_description['phases'][str(alpha)]])
-#     else:
-#         chain_id_divider = clargs.id_divider
-
-#     frame = read_traj_file(clargs.trajfile, phases, \
-#             clargs.alpha, clargs.beta, clargs.freq, chain_id_divider, output_name)
-
 

@@ -52,6 +52,10 @@ def find_condensed_phase_edges(phi, bins):
         left_edge = bins[left]
     if right:
         right_edge = bins[right]
+    if not left_edge:
+        left_edge = bins[0]
+    if not right_edge:
+        right_edge = bins[-1]
 
     return left_edge, right_edge
 
@@ -67,7 +71,37 @@ def locate_interface(density, x, start, end):
     res = minimize(objective, mid, args=(cs, xsmooth))
     return res.x
 
-def get_shiftProfile(data, bins, target_center_loc=None, search_width=5.):
+#def get_shiftProfile(data, bins, target_center_loc=None, search_width=5.):
+#    '''
+#    data: 2 x N numpy array, the binned profile along z
+#    1st col: profile for the alpha phase, 2nd col: profile for the beta phase
+#    '''
+#    v0 = np.pi/6
+#    phi = data[:, -1]/v0
+#    opa, opb = data[:, 0], data[:, 1]
+#    index_mask = np.arange(0, len(bins), 1)
+#
+#    left_edge, right_edge = find_condensed_phase_edges(phi, bins)
+#    start = right_edge - search_width
+#    end = right_edge + search_width
+#    loc = locate_interface(phi, bins, start, end)
+#    loc_index = int(loc/bin_width)
+#
+#    if target_center_loc is None:
+#        target_center_loc = (bins[-1] - bins[0]) / 2.
+#
+#    dshift = target_center_pos - loc
+#    dmove = int(dshift / bin_width)
+#    shift_bins =  bins + dmove * bin_width
+#    rotate = unwrap_indx(index_mask, len(bins)-dmove)
+#    shift_bins = unwrap_z(shift_bins , max(bins))
+#    shifted_a = opa[rotate]
+#    shifted_b = opb[rotate]
+#
+#    return shifted_a, shifted_b, shift_bins
+
+
+def get_shiftProfile(data, bins, target_center_loc=None, style='mid', search_width=5.):
     '''
     data: 2 x N numpy array, the binned profile along z
     1st col: profile for the alpha phase, 2nd col: profile for the beta phase
@@ -76,17 +110,19 @@ def get_shiftProfile(data, bins, target_center_loc=None, search_width=5.):
     phi = data[:, -1]/v0
     opa, opb = data[:, 0], data[:, 1]
     index_mask = np.arange(0, len(bins), 1)
-
     left_edge, right_edge = find_condensed_phase_edges(phi, bins)
-    start = right_edge - search_width
-    end = right_edge + search_width
-    loc = locate_interface(phi, bins, start, end)
-    loc_index = int(loc/bin_width)
+
+    if style == 'mid':
+        lft = locate_interface(phi, bins, left_edge-search_width, left_edge+search_width)
+        lrt = locate_interface(phi, bins, left_edge-search_width, left_edge+search_width)
+        dshift = target_center_pos - (loc_left + loc_right)/2.
+    else:
+        loc = locate_interface(phi, bins, right_edge-search_width, right_edge+search_width)
+        dshift = target_center_pos - loc
 
     if target_center_loc is None:
         target_center_loc = (bins[-1] - bins[0]) / 2.
 
-    dshift = target_center_pos - loc
     dmove = int(dshift / bin_width)
     shift_bins =  bins + dmove * bin_width
     rotate = unwrap_indx(index_mask, len(bins)-dmove)

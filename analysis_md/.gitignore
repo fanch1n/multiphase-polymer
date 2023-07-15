@@ -6,6 +6,8 @@ __pycache__/
 
 cfh.c
 Makefile.inc
-
+*lammpstrj
+*.atom
 *.svg
+*data*
 gof.py
