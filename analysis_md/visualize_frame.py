@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import json
+
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from itertools import product, combinations
@@ -28,10 +29,11 @@ def plot_config(atom_data, box, ax, style=None, view='vertical'):
     if view == 'vertical':
         ax.view_init(elev=20., azim=-35., roll=0.) # vertical view
     else:
-        ax.view_init(elev=0., azim=45., roll=270.)
+        # ax.view_init(elev=0., azim=45., roll=270.)
+        ax.view_init(0., 45., 270.)
     ax.set_axis_off()
     #ax.set_aspect('equal', adjustable='box')
-    ax.set_box_aspect(aspect = (1,1,int(np.ceil(Ls[2]/Ls[1]))))
+    #ax.set_box_aspect(aspect = (1,1,int(np.ceil(Ls[2]/Ls[1]))))
     ax.margins(x=0, y=0)
     return
 
@@ -70,7 +72,8 @@ if __name__ == '__main__':
         phases = json.load(p)
     phis = []
     for i in phases['phases'].keys():
-        phis.append(ref_compositions(phases['phases'][str(i)], phases))
+        if i != "0":
+            phis.append(ref_compositions(phases['phases'][str(i)], phases))
     print(np.array(phis))
 
     with open(clargs.input, 'r') as file_in:
@@ -151,17 +154,20 @@ if __name__ == '__main__':
             left_func = right_func = unitstep
         xData = np.array(mid_bins)
         left_yData = avg_ops[:, alpha-1]
-        left_fittedParameters, Rsquared, RMSE = try_fit(xData, left_yData, left_func)
+        left_fittedParameters, Rsquared, left_RMSE = try_fit(xData, left_yData, left_func)
         left_modelPredictions = left_func(xData, *left_fittedParameters)
-        ax_op.plot(xData, left_modelPredictions, label='fitness = %.2f' %(RMSE))
+        ax_op.plot(xData, left_modelPredictions, label='fitness = %.2f' %(left_RMSE))
 
         right_yData = avg_ops[:, beta-1]
-        right_fittedParameters, Rsquared, RMSE = try_fit(xData, right_yData, right_func)
+        right_fittedParameters, Rsquared, right_RMSE = try_fit(xData, right_yData, right_func)
         right_modelPredictions = right_func(xData, *right_fittedParameters)
-        ax_op.plot(xData, right_modelPredictions, label='fitness = %.2f' %(RMSE))
+        ax_op.plot(xData, right_modelPredictions, label='fitness = %.2f' %(right_RMSE))
         ax_op.legend(loc='lower center', fontsize=9)
 
     fig.tight_layout(pad=0.1)
     if clargs.output:
-        fig.savefig(clargs.output, transparent=True)
-        #fig0.savefig('config-'+clargs.output, transparent=True)
+        if clargs.plot_fitness:
+            fig.savefig(clargs.output+'-rmse-%.3f-%.3f.svg'%(left_RMSE, right_RMSE), transparent=True)
+        else:
+            fig.savefig(clargs.output+'.svg', transparent=True)
+        #fig0.savefig(clargs.output+'-config.svg', transparent=True)

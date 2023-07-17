@@ -166,12 +166,12 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, chain_id_divider, bins):
         # initial phase label #FIXME implement this in a more general way?
         p1, p2 = 0, 0
         for chain_id in list(chain_ids):
-            if chain_id > 2 * chain_id_divider:
-                print("incorrect phase label flag")
-                exit(1)
+            #if chain_id > 2 * chain_id_divider:
+                #print("incorrect phase label flag")
+                #exit(1)
             if chain_id <= chain_id_divider:
                 p1 += 1
-            else:
+            elif chain_id <= 2 * chain_id_divider:
                 p2 += 1
 
         ops.append(op_local)
