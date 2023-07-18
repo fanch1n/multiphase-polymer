@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def read_atom_file(f):
     data = {}
     flag_time, flag_n, flag_box, pos = None, None, None, None
@@ -8,20 +9,20 @@ def read_atom_file(f):
     natoms = None
     for line in f:
         contents = line.split()
-        if 'TIMESTEP' in contents:
-            flag_time=True
+        if "TIMESTEP" in contents:
+            flag_time = True
             continue
-        if 'NUMBER' in contents:
+        if "NUMBER" in contents:
             flag_n = True
             continue
-        if 'BOX' in contents:
+        if "BOX" in contents:
             flag_box = True
             continue
-        if 'mol' in contents and 'type' in contents:
+        if "mol" in contents and "type" in contents:
             pos = True
             continue
         if flag_time:
-            data['timestep'] = int(contents[0])
+            data["timestep"] = int(contents[0])
             flag_time = False
         if flag_n:
             natoms = int(contents[0])
@@ -32,14 +33,14 @@ def read_atom_file(f):
             atom_data.append([float(s) for s in contents[:]])
         if natoms and len(atom_data) == natoms:
             break
-    data['atom'] = np.array(atom_data)
-    data['box'] = box
-    #data['nmols'] = nchains
+    data["atom"] = np.array(atom_data)
+    data["box"] = box
+    # data['nmols'] = nchains
     return data
 
 
 def read_traj(traj_path):
-    with open(traj_path, 'r') as traj_file:
+    with open(traj_path, "r") as traj_file:
         while True:
             try:
                 data = read_atom_file(traj_file)
@@ -48,7 +49,7 @@ def read_traj(traj_path):
                 break
 
 
-#def read_atom_file(filename):
+# def read_atom_file(filename):
 #    '''
 #    read in .atom file
 #    assume the data had the format [atom_id mol_id type xu yu zu]
@@ -101,8 +102,7 @@ def groupby_molID(atom_data):
 
 
 def get_SeqType(atom_data, atom_ids, sequence_map):
-    '''
-    '''
+    """ """
     sorted_atoms = sorted(np.array(atom_ids), key=lambda x: x[0])
     chain = [atom[2] for atom in sorted_atoms]
     pattern = "".join([str(int(t)) for t in chain])
@@ -117,23 +117,26 @@ def map_Mol_Sequence(atom_data, sequence_map):
         res[mol_id] = get_SeqType(atom_data, chain, sequence_map)
     return res
 
+
 def wrap(pos, Ls):
     ans = []
     for i in range(len(pos)):
-         ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
+        ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
     return ans
 
-def unwrap(pos, Lz):
-    return pos - np.floor(pos / Lz) * Lz
 
 def unwrap(pos, Lz):
     return pos - np.floor(pos / Lz) * Lz
+
+
+def unwrap(pos, Lz):
+    return pos - np.floor(pos / Lz) * Lz
+
 
 def unwrap_indx(index, mid):
     return list(index[mid:]) + list(index[:mid])
 
+
 def get_CoM(mol_data):
     assert np.array(mol_data).shape[1] == 3
     return np.average(np.array(mol_data), axis=0)
-
-

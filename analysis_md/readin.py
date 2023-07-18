@@ -4,10 +4,11 @@ from collections import defaultdict
 import json, pickle
 from contextlib import ExitStack
 
+
 def wrap(pos, Ls):
     ans = []
     for i in range(len(pos)):
-         ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
+        ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
     return ans
 
 
@@ -19,16 +20,16 @@ def get_timestep_com(f):
     natoms = None
     for line in f:
         contents = line.split()
-        if 'TIMESTEP' in contents:
-            flag_time=True
+        if "TIMESTEP" in contents:
+            flag_time = True
             continue
-        if 'NUMBER' in contents:
+        if "NUMBER" in contents:
             flag_n = True
             continue
-        if 'BOX' in contents:
+        if "BOX" in contents:
             flag_box = True
             continue
-        if 'mol' in contents and 'type' in contents:
+        if "mol" in contents and "type" in contents:
             pos = True
             continue
         if flag_time:
@@ -45,16 +46,16 @@ def get_timestep_com(f):
             # print("Read in timestep: ", timestep)
             break
 
-    data['atom'] = np.array(atom_data)
-    data['box'] = box
-    data['timestep'] = timestep
-    #data['nmols'] = nchains
+    data["atom"] = np.array(atom_data)
+    data["box"] = box
+    data["timestep"] = timestep
+    # data['nmols'] = nchains
 
     return data
 
 
 def read_traj(traj_path):
-    with open(traj_path, 'r') as com_file:
+    with open(traj_path, "r") as com_file:
         while True:
             try:
                 data = get_timestep_com(com_file)
@@ -62,7 +63,8 @@ def read_traj(traj_path):
             except EOFError:
                 break
 
-#def read_traj(traj_path):
+
+# def read_traj(traj_path):
 #    def get_timestep_com(f):
 #        data = {}
 #        flag_time, flag_n, flag_box, pos = None, None, None, None
@@ -106,18 +108,18 @@ def read_traj(traj_path):
 #            except EOFError:
 #                break
 #
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('compath', type=str, help="path to CoM file")
+    parser.add_argument("compath", type=str, help="path to CoM file")
 
     clargs = parser.parse_args()
     dump_path = None
     counter = 0
     for frame in read_traj(clargs.compath):
         try:
-            #timestep, data = lines
-            print(frame.keys(), frame['timestep'])
+            # timestep, data = lines
+            print(frame.keys(), frame["timestep"])
             counter += 1
             if counter > 10:
                 break
