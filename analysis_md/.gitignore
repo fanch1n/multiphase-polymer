@@ -9,5 +9,8 @@ Makefile.inc
 *lammpstrj
 *.atom
 *.svg
+*.out
+*.png
+*slurm*
 *data*
 gof.py

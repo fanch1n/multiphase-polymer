@@ -1,16 +1,16 @@
 import argparse
 import numpy as np
 import json
-
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
 from itertools import product, combinations
-
 from analysis_traj import ref_compositions
 from analysis_lammps import read_atom_file, wrap, read_traj
 from analysis_atom import map_Mol_Sequence, bin_data, get_shiftAtoms
 from analysis_profile import find_condensed_phase_edges
 from calc_fitness import try_fit, right_step, left_step, unitstep
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from PIL import Image, ImageChops
+
 
 def plot_config(atom_data, box, ax, style=None, view='vertical'):
     Ls = [side[1]-side[0] for side in box]
@@ -29,11 +29,9 @@ def plot_config(atom_data, box, ax, style=None, view='vertical'):
     if view == 'vertical':
         ax.view_init(elev=20., azim=-35., roll=0.) # vertical view
     else:
-        # ax.view_init(elev=0., azim=45., roll=270.)
         ax.view_init(0., 45., 270.)
     ax.set_axis_off()
-    #ax.set_aspect('equal', adjustable='box')
-    #ax.set_box_aspect(aspect = (1,1,int(np.ceil(Ls[2]/Ls[1]))))
+    ax.set_aspect('equal')
     ax.margins(x=0, y=0)
     return
 
@@ -56,13 +54,26 @@ def plot_profile(bins, profile, ax, ylabel=None, style=None, errs=[], coex_label
         ax.set_ylabel(ylabel, fontsize=16)
     return
 
+def trim(im):
+    bg = Image.new(im.mode, im.size, im.getpixel((0,0)))
+    diff = ImageChops.difference(im, bg)
+    diff = ImageChops.add(diff, diff, 2.0, -100)
+    bbox = diff.getbbox()
+    if bbox:
+        return im.crop(bbox)
+    else:
+        # Failed to find the borders, convert to "RGB"
+        return trim(im.convert('RGB'))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input', type=str, help="input .atom file containing a configuration")
     parser.add_argument('trajpath', type=str, help="input .lammpstrj file containing a list of configurations")
     parser.add_argument('phase', type=str, help="input .json file containing phase information")
     parser.add_argument('--plot-fitness', action='store_true', help="if plot the fitness template fitting[False]")
-    parser.add_argument('--phase', type=int, default=0, help="if plot config color coded by initial phase label")
+    parser.add_argument('--summary', action='store_true', help="if make the summary plot [False]")
+    parser.add_argument('--plot-phase', action='store_true', help="plot config color coded by initial phase label")
     parser.add_argument('--chain', type=int, default=0, help="if plot config color coded by chain type")
     parser.add_argument('--output', type=str, help="output .svg file")
 
@@ -88,21 +99,20 @@ if __name__ == '__main__':
     alpha, beta = int(string[0]), int(string[1])
     print('coexistence of %d-%d' %(alpha, beta))
 
-    #fig0 = plt.figure(figsize=(3, 12))
-    #fig0=plt.figure()
-    #gs0 = fig0.add_gridspec(nrows=1, ncols=3)
-    #ax_config = fig0.add_subplot(gs0[0, :], projection='3d')
+    fig0 = plt.figure()
+    ax_config = fig0.add_subplot(111, projection='3d')
 
-    fig = plt.figure(figsize=(6, 12))
     fig = plt.figure(figsize=plt.figaspect(1.))
     gs = fig.add_gridspec(nrows=2, ncols=3)
-    #ax_config = fig.add_subplot(gs[0, :], projection='3d')
     ax_chain = fig.add_subplot(gs[0, :])
     ax_op = fig.add_subplot(gs[1, :])
 
     divider = sum(phases['phases'][str(int(alpha))].values())
     print("divider: ", divider)
+
     bins = np.arange(0., Ls[-1], 3.)
+    mid_bins = (bins[:-1] + bins[1:]) / 2.
+
     mol_sequence_map = map_Mol_Sequence(np.array(atom_data), phases['components'])
     # currently the interface is determined based on binned profile instead of raw atom data
     def shift_center(atom_data, Ls, phis, mol_sequence_map, ntypes, divider):
@@ -113,12 +123,8 @@ if __name__ == '__main__':
 
     shifted_atom_data = shift_center(atom_data, Ls, phis, mol_sequence_map, phases['N'], divider)
 
-    #plot_config(shifted_atom_data, results['box'], ax_config, view='horizontal')
-    #profile = bin_data(atom_data, Ls, phis, mol_sequence_map, phases['N'], divider, bins)
+    plot_config(shifted_atom_data, results['box'], ax_config, view='horizontal')
 
-    mid_bins = (bins[:-1] + bins[1:]) / 2.
-    #plot_profile(mid_bins, profile['op'], ax_op, ylabel='order parameter', style='op', coex_labels=[alpha-1, beta-1])
-    #plot_profile(mid_bins, profile['chain_composition'], ax_chain, ylabel='composition', style='chain')
     list_compos = []
     list_ops = []
     freq = 500
@@ -136,6 +142,9 @@ if __name__ == '__main__':
             print("break at ", counter)
             break
 
+
+
+    # plotting avergage density profile and other parameter profile
     plot_profile(mid_bins, np.average(np.array(list_compos), axis=0), ax_chain, \
             ylabel='composition', errs=np.std(np.array(list_compos), axis=0), style='chain')
 
@@ -144,10 +153,9 @@ if __name__ == '__main__':
             style='op', errs=np.std(np.array(list_ops), axis=0), coex_labels=[alpha-1, beta-1])
 
     shared = np.dot(phis[alpha-1], phis[beta-1])
-    # assuming alpha phase is on the left side of the box
-    if clargs.plot_fitness:
-        #FIXME scale parameter should be set properly
-        if shared > 1e-3:
+    # alpha phase is assumed to be on the left side of the box
+    if clargs.plot_fitness: #FIXME scale parameter should be set properly
+        if 1e-3 < shared < 0.99:
             left_func = left_step
             right_func  = right_step
         else:
@@ -165,9 +173,32 @@ if __name__ == '__main__':
         ax_op.legend(loc='lower center', fontsize=9)
 
     fig.tight_layout(pad=0.1)
+
+    out_profile = clargs.output + '.png'
+    out_config = clargs.output + '-config.png'
     if clargs.output:
         if clargs.plot_fitness:
-            fig.savefig(clargs.output+'-rmse-%.3f-%.3f.svg'%(left_RMSE, right_RMSE), transparent=True)
-        else:
-            fig.savefig(clargs.output+'.svg', transparent=True)
-        #fig0.savefig(clargs.output+'-config.svg', transparent=True)
+            out_config = clargs.output+'-rmse-%.3f-%.3f.png'%(left_RMSE, right_RMSE)
+        fig.savefig(out_profile, transparent=True)
+        fig0.savefig(out_config, transparent=True)
+
+    ### combine plots to the make the summary plots
+    if clargs.summary:
+        config = trim(Image.open(out_config))
+        L = 400
+        profile = Image.open(out_profile)
+        profile = profile.resize((L, L))
+
+        fig_ = plt.figure()
+        gss = fig_.add_gridspec(nrows=5, ncols=1, wspace=0, hspace=0)
+        ax1 = fig_.add_subplot(gss[0, :])
+        ax2 = fig_.add_subplot(gss[1:, :])
+        im = ax1.imshow(config)
+        im2 = ax2.imshow(profile)
+
+        ax1.set_axis_off()
+        ax2.set_axis_off()
+        fig_.tight_layout()
+        fig_.savefig(clargs.output + 'summary.png')
+
+
