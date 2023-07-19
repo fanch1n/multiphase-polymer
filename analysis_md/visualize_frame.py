@@ -41,25 +41,45 @@ def plot_config(atom_data, box, ax, style=None, view="vertical"):
     return
 
 
-def plot_profile(bins, profile, ax, ylabel=None, style=None, errs=[], coex_labels=[]):
+# def plot_profile(bins, profile, ax, ylabel=None, style=None, errs=[], coex_labels=[]):
+def plot_profile(
+    bins,
+    profile,
+    ax,
+    ylabel=None,
+    style=None,
+    lower_errs=[],
+    upper_errs=[],
+    coex_labels=[],
+):
     for i in range(profile.shape[1]):
         if style == "chain":
             ax.plot(bins, profile[:, i], label="chain-%d" % (1 + i))
-            if len(errs) > 0 and len(errs[:, i]) == len(profile[:, i]):
+            # if len(errs) > 0 and len(errs[:, i]) == len(profile[:, i]):
+            #    ax.fill_between(
+            #        bins,
+            #        profile[:, i] - errs[:, i],
+            #        profile[:, i] + errs[:, i],
+            #        alpha=0.5,
+            #    )
+            if len(lower_errs) > 0 and len(upper_errs) > 0:
                 ax.fill_between(
                     bins,
-                    profile[:, i] - errs[:, i],
-                    profile[:, i] + errs[:, i],
+                    lower_errs[:, i],
+                    upper_errs[:, i],
                     alpha=0.5,
                 )
+
         elif style == "op":
             if i in coex_labels:
                 ax.plot(bins, profile[:, i], label="phase-%d" % (1 + i))
-                if len(errs) > 0 and len(errs[:, i]) == len(profile[:, i]):
+                # FIXME confidence interval as error bar
+                # if len(errs) > 0 and len(errs[:, i]) == len(profile[:, i]):
+                if len(lower_errs) > 0 and len(upper_errs) > 0:
                     ax.fill_between(
                         bins,
-                        profile[:, i] - errs[:, i],
-                        profile[:, i] + errs[:, i],
+                        lower_errs[:, i],
+                        upper_errs[:, i],
                         alpha=0.5,
                     )
         else:
@@ -166,7 +186,7 @@ if __name__ == "__main__":
 
     list_compos = []
     list_ops = []
-    freq = 500
+    freq = 100
     counter = 0
     for frame in read_traj(clargs.trajpath):
         try:
@@ -191,13 +211,20 @@ if __name__ == "__main__":
             print("break at ", counter)
             break
 
+    def get_max_interval(data, p=0.95):
+        index = np.argsort(data, axis=0)
+        top_k = np.floor(data.shape[0] * 0.95)
+        return data[np.where(index == top_k)]
+
     # plotting avergage density profile and other parameter profile
     plot_profile(
         mid_bins,
         np.average(np.array(list_compos), axis=0),
         ax_chain,
         ylabel="composition",
-        errs=np.std(np.array(list_compos), axis=0),
+        # errs=np.std(np.array(list_compos), axis=0),
+        lower_errs=np.percentile(np.array(list_compos), 0.25, axis=0),
+        upper_errs=np.percentile(np.array(list_compos), 0.75, axis=0),
         style="chain",
     )
 
@@ -208,11 +235,18 @@ if __name__ == "__main__":
         ax_op,
         ylabel="order parameter",
         style="op",
-        errs=np.std(np.array(list_ops), axis=0),
+        # errs=np.std(np.array(list_ops), axis=0),
+        lower_errs=np.percentile(np.array(list_ops), 0.25, axis=0),
+        upper_errs=np.percentile(np.array(list_ops), 0.75, axis=0),
         coex_labels=[alpha - 1, beta - 1],
     )
 
-    shared = np.dot(phis[alpha - 1], phis[beta - 1])
+    shared = (
+        np.dot(phis[alpha - 1], phis[beta - 1])
+        / np.linalg.norm(phis[alpha - 1], ord=2)
+        / np.linalg.norm(phis[beta - 1], ord=2)
+    )
+
     # alpha phase is assumed to be on the left side of the box
     if clargs.plot_fitness:  # FIXME scale parameter should be set properly
         if 1e-3 < shared < 0.99:
@@ -243,8 +277,8 @@ if __name__ == "__main__":
     if clargs.output:
         if clargs.plot_fitness:
             out_config = clargs.output + "-rmse-%.3f-%.3f.png" % (left_RMSE, right_RMSE)
-        fig.savefig(out_profile, transparent=True)
-        fig0.savefig(out_config, transparent=True)
+        fig.savefig(out_profile, dpi=1200, transparent=True)
+        fig0.savefig(out_config, dpi=1200, transparent=True)
 
     ### combine plots to the make the summary plots
     if clargs.summary:
@@ -263,4 +297,4 @@ if __name__ == "__main__":
         ax1.set_axis_off()
         ax2.set_axis_off()
         fig_.tight_layout()
-        fig_.savefig(clargs.output + "summary.png")
+        fig_.savefig(clargs.output + "-summary.png", dpi=1200, transparent=True)

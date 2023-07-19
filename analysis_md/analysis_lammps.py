@@ -118,25 +118,26 @@ def map_Mol_Sequence(atom_data, sequence_map):
     return res
 
 
-def wrap(pos, Ls):
-    ans = []
-    for i in range(len(pos)):
-        ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
-    return ans
-
-
-def unwrap(pos, Lz):
-    return pos - np.floor(pos / Lz) * Lz
-
-
-def unwrap(pos, Lz):
-    return pos - np.floor(pos / Lz) * Lz
-
-
-def unwrap_indx(index, mid):
-    return list(index[mid:]) + list(index[:mid])
-
-
-def get_CoM(mol_data):
-    assert np.array(mol_data).shape[1] == 3
-    return np.average(np.array(mol_data), axis=0)
+#
+# def wrap(pos, Ls):
+#    ans = []
+#    for i in range(len(pos)):
+#        ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
+#    return ans
+#
+#
+# def unwrap(pos, Lz):
+#    return pos - np.floor(pos / Lz) * Lz
+#
+#
+# def unwrap(pos, Lz):
+#    return pos - np.floor(pos / Lz) * Lz
+#
+#
+# def unwrap_indx(index, mid):
+#    return list(index[mid:]) + list(index[:mid])
+#
+#
+# def get_CoM(mol_data):
+#    assert np.array(mol_data).shape[1] == 3
+#    return np.average(np.array(mol_data), axis=0)

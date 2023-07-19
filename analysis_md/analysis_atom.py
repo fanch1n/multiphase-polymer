@@ -5,49 +5,6 @@ import json
 import os
 from collections import Counter
 
-# def read_atom_file(filename):
-#    '''
-#    read in .atom file
-#    assume the data had the format [atom_id mol_id type xu yu zu]
-#    '''
-#    data = {}
-#    with open(filename, 'r') as f:
-#        print("reading_traj_file input:", filename)
-#        cnt = 0
-#        atom_data = []
-#        for line in f:
-#            contents = line.split()
-#            if 'TIMESTEP' in contents:
-#                cnt += 1
-#                nchains = 0
-#                atom_data = []
-#                box = []
-#                pos = False
-#                bx = False
-#                newstep = True
-#                natoms = False
-#            if newstep and not bx and not natoms:
-#                if len(contents) == 1:
-#                    timestep = int(contents[0])
-#            if 'BOX' in contents:
-#                bx = True
-#            elif 'type' in contents:
-#                pos = True
-#                bx = False
-#            else:
-#                if len(contents) > 0 and bx:
-#                    box.append([float(s) for s in contents])
-#                if len(contents) > 0 and pos:
-#                    atom_id, mol_id = int(contents[0]), int(contents[1])
-#                    info = [atom_id, mol_id] + [float(s) for s in contents[2:]]
-#                    nchains = max(nchains, mol_id)
-#                    atom_data.append(info)
-#    data['atom'] = np.array(atom_data)
-#    data['box'] = box
-#    data['n_mol'] = nchains
-#
-#    return data
-
 
 def groupby_molID(atom_data):
     mol = {}
