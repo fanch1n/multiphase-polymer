@@ -3,8 +3,11 @@ import numpy as np
 import json
 from itertools import product, combinations
 from analysis_traj import ref_compositions
-from analysis_lammps import read_atom_file, wrap, read_traj
-from analysis_atom import map_Mol_Sequence, bin_data, get_shiftAtoms
+
+# from analysis_lammps import read_atom_file, wrap, read_traj
+from analysis_atom import *
+
+# map_Mol_Sequence, bin_data, get_shiftAtoms
 from analysis_profile import find_condensed_phase_edges
 from calc_fitness import try_fit, right_step, left_step, unitstep
 from mpl_toolkits.mplot3d import Axes3D
@@ -159,13 +162,13 @@ if __name__ == "__main__":
     fig0 = plt.figure()
     ax_config = fig0.add_subplot(111, projection="3d")
 
-    fig = plt.figure(figsize=plt.figaspect(1.0))
-    gs = fig.add_gridspec(nrows=2, ncols=3)
-    ax_chain = fig.add_subplot(gs[0, :])
-    ax_op = fig.add_subplot(gs[1, :])
+    fig = plt.figure(figsize=plt.figaspect(1.5))
+    gs = fig.add_gridspec(nrows=8, ncols=3, wspace=0, hspace=0)
+    ax_insert = fig.add_subplot(gs[0:2, :])
+    ax_chain = fig.add_subplot(gs[2:5, :])
+    ax_op = fig.add_subplot(gs[5:, :])
 
     divider = sum(phases["phases"][str(int(alpha))].values())
-    print("divider: ", divider)
 
     bins = np.arange(0.0, Ls[-1], 3.0)
     mid_bins = (bins[:-1] + bins[1:]) / 2.0
@@ -211,18 +214,12 @@ if __name__ == "__main__":
             print("break at ", counter)
             break
 
-    def get_max_interval(data, p=0.95):
-        index = np.argsort(data, axis=0)
-        top_k = np.floor(data.shape[0] * 0.95)
-        return data[np.where(index == top_k)]
-
     # plotting avergage density profile and other parameter profile
     plot_profile(
         mid_bins,
         np.average(np.array(list_compos), axis=0),
         ax_chain,
         ylabel="composition",
-        # errs=np.std(np.array(list_compos), axis=0),
         lower_errs=np.percentile(np.array(list_compos), 0.25, axis=0),
         upper_errs=np.percentile(np.array(list_compos), 0.75, axis=0),
         style="chain",
@@ -235,7 +232,6 @@ if __name__ == "__main__":
         ax_op,
         ylabel="order parameter",
         style="op",
-        # errs=np.std(np.array(list_ops), axis=0),
         lower_errs=np.percentile(np.array(list_ops), 0.25, axis=0),
         upper_errs=np.percentile(np.array(list_ops), 0.75, axis=0),
         coex_labels=[alpha - 1, beta - 1],
@@ -272,29 +268,15 @@ if __name__ == "__main__":
 
     fig.tight_layout(pad=0.1)
 
-    out_profile = clargs.output + ".png"
+    out_profile = clargs.output + ".svg"
     out_config = clargs.output + "-config.png"
+
+    fig0.savefig(out_config, dpi=300, transparent=True)
+    config = trim(Image.open(out_config))
+    im = ax_insert.imshow(config)
+    ax_insert.set_axis_off()
     if clargs.output:
         if clargs.plot_fitness:
             out_config = clargs.output + "-rmse-%.3f-%.3f.png" % (left_RMSE, right_RMSE)
-        fig.savefig(out_profile, dpi=1200, transparent=True)
-        fig0.savefig(out_config, dpi=1200, transparent=True)
-
-    ### combine plots to the make the summary plots
-    if clargs.summary:
-        config = trim(Image.open(out_config))
-        L = 400
-        profile = Image.open(out_profile)
-        profile = profile.resize((L, L))
-
-        fig_ = plt.figure()
-        gss = fig_.add_gridspec(nrows=5, ncols=1, wspace=0, hspace=0)
-        ax1 = fig_.add_subplot(gss[0, :])
-        ax2 = fig_.add_subplot(gss[1:, :])
-        im = ax1.imshow(config)
-        im2 = ax2.imshow(profile)
-
-        ax1.set_axis_off()
-        ax2.set_axis_off()
-        fig_.tight_layout()
-        fig_.savefig(clargs.output + "-summary.png", dpi=1200, transparent=True)
+        fig.tight_layout()
+        fig.savefig(out_profile)

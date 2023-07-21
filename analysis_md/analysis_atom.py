@@ -1,9 +1,54 @@
 import math, argparse, random
 import numpy as np
-from itertools import product
-import json
 import os
-from collections import Counter
+
+
+def read_atom_file(f):
+    data = {}
+    flag_time, flag_n, flag_box, pos = None, None, None, None
+    atom_data = []
+    box = []
+    natoms = None
+    for line in f:
+        contents = line.split()
+        if "TIMESTEP" in contents:
+            flag_time = True
+            continue
+        if "NUMBER" in contents:
+            flag_n = True
+            continue
+        if "BOX" in contents:
+            flag_box = True
+            continue
+        if "mol" in contents and "type" in contents:
+            pos = True
+            continue
+        if flag_time:
+            data["timestep"] = int(contents[0])
+            flag_time = False
+        if flag_n:
+            natoms = int(contents[0])
+            flag_n = False
+        if flag_box and len(box) < 3:
+            box.append([float(s) for s in contents])
+        if pos:
+            atom_data.append([float(s) for s in contents[:]])
+        if natoms and len(atom_data) == natoms:
+            break
+    data["atom"] = np.array(atom_data)
+    data["box"] = box
+    # data['nmols'] = nchains
+    return data
+
+
+def read_traj(traj_path):
+    with open(traj_path, "r") as traj_file:
+        while True:
+            try:
+                data = read_atom_file(traj_file)
+                yield data
+            except EOFError:
+                break
 
 
 def groupby_molID(atom_data):

@@ -4,7 +4,9 @@ from itertools import product
 import json
 import os
 from collections import Counter
-from analysis_lammps import groupby_molID, map_Mol_Sequence, get_SeqType
+
+# from analysis_lammps import groupby_molID, map_Mol_Sequence, get_SeqType
+from analysis_atom import *  # groupby_molID, map_Mol_Sequence, get_SeqType
 
 
 def histogram_intersection(h1, h2):
