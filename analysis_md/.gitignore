@@ -13,4 +13,6 @@ Makefile.inc
 *.png
 *slurm*
 *data*
+*test*
+*.npy
 gof.py

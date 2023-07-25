@@ -30,17 +30,18 @@ def find_condensed_phase_edges(phi, bins):
     assumes box with one connected condensed region in contact with a dilute phase
     (at most two regions due to the PBC)
     """
-    a = density_filter(phi, 0.1)
+    a = density_filter(phi, 0.05)
     condensed_region = one_runs(a)
     dilute_region = zero_runs(a)
+    left = right = None
     if len(condensed_region) + len(dilute_region) > 3:
-        left = right = None
         print(
             "WARNING: disconnected condensed region! Following analysis does not apply!"
         )
     elif len(condensed_region) + len(dilute_region) < 3:
         if len(dilute_region) == 0:
             print("WARNING: no dilute phase")
+            exit(1)
         elif len(condensed_region) == 1:
             left, right = condensed_region[0]
     else:

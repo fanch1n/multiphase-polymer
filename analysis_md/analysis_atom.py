@@ -79,10 +79,11 @@ def map_Mol_Sequence(atom_data, sequence_map):
 
 
 def wrap(pos, Ls):
-    ans = []
-    for i in range(len(pos)):
-        ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
-    return ans
+    #    ans = []
+    #    for i in range(len(pos)):
+    #        ans.append(pos[i] - np.floor(pos[i] / Ls[i]) * Ls[i])
+    #    return ans
+    return np.array(pos) - np.floor(np.array(pos) / np.array(Ls)) * np.array(Ls)
 
 
 def unwrap(pos, Lz):
@@ -148,7 +149,7 @@ def compute_degree_of_mixing(op1, op2, density, threshold):
     return histogram_intersection(f, g), histogram_divergence(f, g)
 
 
-def bin_data(atom_data, Ls, phis, mol_sequence_map, N, chain_id_divider, bins):
+def bin_data(atom_data, Ls, phis, mol_sequence_map, N, phase_map, bins):
     """
     atom_data:  a dictionary with the format as if a .atom file has been read in through the read_atom_file
     routine
@@ -172,10 +173,8 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, chain_id_divider, bins):
         for chain in chain_ids:  # FIXME standardize the chain type label index
             chain_type = mol_sequence_map[chain]  # component type: 1, ..., N
             compositions[chain_type - 1] += 1
-
         if np.sum(compositions) > 0.0:
             compositions = compositions / np.sum(compositions)
-
         # order parameter for K phases
         op_local = np.zeros(len(phis))
         for k in range(len(phis)):
@@ -185,26 +184,25 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, chain_id_divider, bins):
                     / np.linalg.norm(compositions, ord=2)
                     / np.linalg.norm(phis[k], ord=2)
                 )
-
-        # initial phase label #FIXME implement this in a more general way?
-        p1, p2 = 0, 0
-        for chain_id in list(chain_ids):
-            # if chain_id > 2 * chain_id_divider:
-            # print("incorrect phase label flag")
-            # exit(1)
-            if chain_id <= chain_id_divider:
-                p1 += 1
-            elif chain_id <= 2 * chain_id_divider:
-                p2 += 1
+        if len(phase_map) > 0:
+            ps = np.zeros(len(set(val for val in phase_map.values())))
+            # alpha-phase beta-phase and dilute phase at coexistence
+            # only interested in the degree of mixing for the alpha and beta phases
+            for chain_id in list(chain_ids):
+                label = phase_map[str(int(chain_id))]
+                ps[label] += 1
+            labels.append(ps)
 
         ops.append(op_local)
-        labels.append([p1, p2])
         rhos.append(rho)
         compos.append(compositions)
 
     res["op"] = np.array(ops)
     res["chain_composition"] = np.array(compos)
-    res["label"] = np.array(labels)
+    if len(labels) > 0:
+        res["label"] = np.array(labels)
+    else:
+        res["label"] = None
     res["density"] = np.array(rhos)
     res["bins"] = bins
     # res['dom'] = compute_degree_of_mixing(ops[:,2], ops[:,3], rhos, 0.1)

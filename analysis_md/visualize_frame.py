@@ -2,13 +2,11 @@ import argparse
 import numpy as np
 import json
 from itertools import product, combinations
+
 from analysis_traj import ref_compositions
-
-# from analysis_lammps import read_atom_file, wrap, read_traj
 from analysis_atom import *
-
-# map_Mol_Sequence, bin_data, get_shiftAtoms
 from analysis_profile import find_condensed_phase_edges
+
 from calc_fitness import try_fit, right_step, left_step, unitstep
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -108,14 +106,7 @@ def trim(im):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "input", type=str, help="input .atom file containing a configuration"
-    )
-    parser.add_argument(
-        "trajpath",
-        type=str,
-        help="input .lammpstrj file containing a list of configurations",
-    )
+    parser.add_argument("input", type=str, help="input .atom file or .lammpstrj file")
     parser.add_argument(
         "phase", type=str, help="input .json file containing phase information"
     )
@@ -126,6 +117,10 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--summary", action="store_true", help="if make the summary plot [False]"
+    )
+
+    parser.add_argument(
+        "--label", type=str, default="", help=" .json file containing phase labels"
     )
     parser.add_argument(
         "--plot-phase",
@@ -168,35 +163,35 @@ if __name__ == "__main__":
     ax_chain = fig.add_subplot(gs[2:5, :])
     ax_op = fig.add_subplot(gs[5:, :])
 
-    divider = sum(phases["phases"][str(int(alpha))].values())
-
     bins = np.arange(0.0, Ls[-1], 3.0)
     mid_bins = (bins[:-1] + bins[1:]) / 2.0
-
     mol_sequence_map = map_Mol_Sequence(np.array(atom_data), phases["components"])
     # currently the interface is determined based on binned profile instead of raw atom data
-    def shift_center(atom_data, Ls, phis, mol_sequence_map, ntypes, divider):
-        profile = bin_data(atom_data, Ls, phis, mol_sequence_map, ntypes, divider, bins)
+    def shift_center(atom_data, Ls, phis, mol_sequence_map, ntypes, phase_map):
+        # an additional step to center the whole box
+        c_atom_data = np.array(atom_data)
+        c_atom_data[:, -3:] = wrap(c_atom_data[:, -3:], Ls)
+        net_CoM = get_CoM(c_atom_data[:, -3:])
+        c_atom_data = get_shiftAtoms(
+            c_atom_data, np.array([0, 0, Ls[-1] / 2.0]) - net_CoM, Ls
+        )
+        profile = bin_data(
+            c_atom_data, Ls, phis, mol_sequence_map, ntypes, phase_map, bins
+        )
         left_edge, right_edge = find_condensed_phase_edges(profile["density"], bins)
         dz = Ls[-1] / 2.0 - (right_edge + left_edge) / 2.0
-        return get_shiftAtoms(atom_data, np.array([0.0, 0.0, dz]), Ls)
 
-    # plot the snapshot
-    shifted_atom_data = shift_center(
-        atom_data, Ls, phis, mol_sequence_map, phases["N"], divider
-    )
-    plot_config(shifted_atom_data, results["box"], ax_config, view="horizontal")
+        return get_shiftAtoms(c_atom_data, np.array([0.0, 0.0, dz]), Ls)
 
     list_compos = []
     list_ops = []
-    freq = 100
+    freq = 1000
     counter = 0
-    for frame in read_traj(clargs.trajpath):
+    for frame in read_traj(clargs.input):
         try:
-            counter += 1
             if counter % freq == 0:
                 shifted_atoms = shift_center(
-                    frame["atom"], Ls, phis, mol_sequence_map, phases["N"], divider
+                    frame["atom"], Ls, phis, mol_sequence_map, phases["N"], {}
                 )
                 profile = bin_data(
                     shifted_atoms,
@@ -204,16 +199,20 @@ if __name__ == "__main__":
                     phis,
                     mol_sequence_map,
                     phases["N"],
-                    divider,
+                    {},
                     bins,
                 )
                 list_compos.append(profile["chain_composition"])
                 list_ops.append(profile["op"])
                 print(counter)
+
+            counter += 1
         except:
+
             print("break at ", counter)
             break
 
+    plot_config(shifted_atoms, results["box"], ax_config, view="horizontal")
     # plotting avergage density profile and other parameter profile
     plot_profile(
         mid_bins,
