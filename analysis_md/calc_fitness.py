@@ -60,8 +60,8 @@ def try_fit(xData, yData, func):
         MSE = np.mean(SE)  # mean squared errors
         RMSE = np.sqrt(MSE)  # Root Mean Squared Error, RMSE
         Rsquared = 1.0 - (np.var(absError) / np.var(yData))
-        if RMSE < min_err:
-            min_err = RMSE
+        if MSE < min_err:
+            min_err = MSE
             para = fittedParameters
             rsq = Rsquared
         # print()
