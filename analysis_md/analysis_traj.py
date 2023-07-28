@@ -28,11 +28,9 @@ def histogram_divergence(h1, h2):
 
 
 def compute_degree_of_mixing(op1, op2):
-    """based on chain id"""
     f, g = np.array(op1), np.array(op2)
     f = f / np.sum(f)
     g = g / np.sum(g)
-    # return histogram_intersection(f, g), histogram_divergence(f, g)
     return 1.0 - histogram_divergence(f, g)
 
 
