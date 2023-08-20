@@ -15,3 +15,4 @@ Makefile.inc
 *test*
 *.npy
 gof.py
+get_molseq_map.py

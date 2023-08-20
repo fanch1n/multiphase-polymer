@@ -84,34 +84,18 @@ def locate_interface(density, x, start, end):
     return res.x
 
 
-# def get_shiftProfile(data, bins, target_center_loc=None, search_width=5.):
-#    '''
-#    data: 2 x N numpy array, the binned profile along z
-#    1st col: profile for the alpha phase, 2nd col: profile for the beta phase
-#    '''
-#    v0 = np.pi/6
-#    phi = data[:, -1]/v0
-#    opa, opb = data[:, 0], data[:, 1]
-#    index_mask = np.arange(0, len(bins), 1)
-#
-#    left_edge, right_edge = find_condensed_phase_edges(phi, bins)
-#    start = right_edge - search_width
-#    end = right_edge + search_width
-#    loc = locate_interface(phi, bins, start, end)
-#    loc_index = int(loc/bin_width)
-#
-#    if target_center_loc is None:
-#        target_center_loc = (bins[-1] - bins[0]) / 2.
-#
-#    dshift = target_center_pos - loc
-#    dmove = int(dshift / bin_width)
-#    shift_bins =  bins + dmove * bin_width
-#    rotate = unwrap_indx(index_mask, len(bins)-dmove)
-#    shift_bins = unwrap_z(shift_bins , max(bins))
-#    shifted_a = opa[rotate]
-#    shifted_b = opb[rotate]
-#
-#    return shifted_a, shifted_b, shift_bins
+def locate_condense_phase(op):
+    """
+    find connected region where the op value is greater that 0.95
+    """
+    loc_mask = []
+    a = density_filter(op, 0.95)
+    condensed_region = one_runs(a)
+    res = []
+    for region in condensed_region:
+        if region[-1] - region[0] > 2:
+            res.append(region)
+    return res
 
 
 def get_shiftProfile(data, bins, target_center_loc=None, style="mid", search_width=5.0):

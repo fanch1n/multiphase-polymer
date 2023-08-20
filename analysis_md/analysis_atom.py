@@ -1,6 +1,7 @@
 import math, argparse, random
 import numpy as np
 import os
+import gzip, pickle
 
 
 def read_atom_file(f):
@@ -43,6 +44,16 @@ def read_atom_file(f):
 
 def read_traj(traj_path):
     with open(traj_path, "r") as traj_file:
+        while True:
+            try:
+                data = read_atom_file(traj_file)
+                yield data
+            except EOFError:
+                break
+
+
+def read_traj_zipped(traj_path):
+    with gzip.open(traj_path, "rt") as traj_file:
         while True:
             try:
                 data = read_atom_file(traj_file)
@@ -155,7 +166,7 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, phase_map, bins):
     routine
     phis: a list contains K reference vectors for ideal phase compositions
     """
-    rhos, ops, compos, labels = [], [], [], []
+    rhos, ops, compos, labels, nchains = [], [], [], [], []
     res = {}
     for i in range(len(bins) - 1):
         zmin, zmax = bins[i], bins[i + 1]
@@ -173,6 +184,8 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, phase_map, bins):
         for chain in chain_ids:  # FIXME standardize the chain type label index
             chain_type = mol_sequence_map[chain]  # component type: 1, ..., N
             compositions[chain_type - 1] += 1
+
+        nchains.append(compositions)
         if np.sum(compositions) > 0.0:
             compositions = compositions / np.sum(compositions)
         # order parameter for K phases
@@ -205,6 +218,7 @@ def bin_data(atom_data, Ls, phis, mol_sequence_map, N, phase_map, bins):
         res["label"] = None
     res["density"] = np.array(rhos)
     res["bins"] = bins
+    res["nchains"] = np.array(nchains)
     # res['dom'] = compute_degree_of_mixing(ops[:,2], ops[:,3], rhos, 0.1)
 
     return res

@@ -15,6 +15,7 @@ from PIL import Image, ImageChops
 
 def plot_config(atom_data, box, ax, style=None, view="vertical", style_map={}):
     Ls = [side[1] - side[0] for side in box]
+    print("plotting MD snapshot with box dim: \n", box)
     for s, e in combinations(np.array(list(product(box[0], box[1], box[2]))), 2):
         if np.sum(np.abs(s - e)) in Ls:
             ax.plot3D(*zip(s, e), color="black")
@@ -152,6 +153,12 @@ if __name__ == "__main__":
         action="store_true",
         help="save the processed profile [False]",
     )
+    parser.add_argument(
+        "--freq",
+        type=int,
+        default=10,
+        help="frequency for processing the lammpstrj file",
+    )
     parser.add_argument("--output", type=str, help="output .svg file")
     clargs = parser.parse_args()
 
@@ -169,29 +176,42 @@ if __name__ == "__main__":
             phis.append(ref_compositions(phases["phases"][str(i)], phases))
     print(np.array(phis))
 
-    with open(clargs.input, "r") as file_in:
-        results = read_atom_file(file_in)
+    # with open(clargs.input, "r") as file_in:
+    #    results = read_atom_file(file_in)
 
-    atom_data = results["atom"]
-    Ls = [
-        side[1] - side[0] for side in results["box"]
-    ]  # FIXME check the origin is at (0, 0, 0)
+    # FIXME check the origin is at (0, 0, 0)
     string = clargs.input.split("/")[-1].split("-")[-1].split(".")[0]
     alpha, beta = int(string[0]), int(string[1])
     print("coexistence of %d-%d" % (alpha, beta))
 
-    bins = np.arange(0.0, Ls[-1], 3.0)
-    mid_bins = (bins[:-1] + bins[1:]) / 2.0
-    mol_sequence_map = map_Mol_Sequence(np.array(atom_data), phases["components"])
+    # bins = np.arange(0.0, Ls[-1], 3.0)
+    # mid_bins = (bins[:-1] + bins[1:]) / 2.0
+    # mol_sequence_map = map_Mol_Sequence(np.array(atom_data), phases["components"])
     # currently the interface is determined based on binned profile instead of raw atom data
 
     list_compos = []
     list_ops = []
-    freq = 100
     counter = 0
-    for frame in read_traj(clargs.input):
+
+    read_func = None
+    if ".gz" in clargs.input:
+        read_func = read_traj_zipped
+    else:
+        read_func = read_traj
+
+    for frame in read_func(clargs.input):
         try:
-            if counter % freq == 0:
+            if counter % clargs.freq == 0:
+                if counter == 0:
+                    atom_data = frame["atom"]
+                    Ls = [side[1] - side[0] for side in frame["box"]]
+                    box = frame["box"]
+                    bins = np.arange(0.0, Ls[-1], 3.0)
+                    mid_bins = (bins[:-1] + bins[1:]) / 2.0
+                    mol_sequence_map = map_Mol_Sequence(
+                        np.array(atom_data), phases["components"]
+                    )
+
                 shifted_atoms = shift_center(
                     frame["atom"],
                     Ls,
@@ -211,7 +231,7 @@ if __name__ == "__main__":
                 )
                 list_compos.append(profile["chain_composition"])
                 list_ops.append(profile["op"])
-                print(counter)
+                print(counter, flush=True)
 
             counter += 1
         except:
@@ -221,7 +241,7 @@ if __name__ == "__main__":
     # plotting snapshot
     fig0 = plt.figure()
     ax_config = fig0.add_subplot(111, projection="3d")
-    plot_config(shifted_atoms, results["box"], ax_config, view="horizontal")
+    plot_config(shifted_atoms, box, ax_config, view="horizontal")
     out_config = clargs.output + "-config.png"
     fig0.savefig(out_config, dpi=1200, transparent=True)
 
@@ -230,7 +250,7 @@ if __name__ == "__main__":
         ax_label = fig1.add_subplot(111, projection="3d")
         plot_config(
             shifted_atoms,
-            results["box"],
+            box,
             ax_label,
             style="phase",
             view="horizontal",
@@ -278,7 +298,7 @@ if __name__ == "__main__":
     )
 
     # alpha phase is assumed to be on the left side of the box
-    if clargs.plot_fitness:  # FIXME scale parameter should be set properly
+    if clargs.plot_fitness:
         if 1e-3 < shared < 0.99:
             left_func = left_step
             right_func = right_step
