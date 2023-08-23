@@ -4,9 +4,7 @@ from itertools import product
 import json
 import os
 from collections import Counter
-
-# from analysis_lammps import groupby_molID, map_Mol_Sequence, get_SeqType
-from analysis_atom import *  # groupby_molID, map_Mol_Sequence, get_SeqType
+from analysis_atom import *
 
 
 def histogram_intersection(h1, h2):
@@ -75,8 +73,15 @@ if __name__ == "__main__":
     list_dom = []
     list_timestep = []
     counter = 0
+
+    read_func = None
     for traj in trajfiles:
-        for frame in read_traj(traj):
+        if ".gz" in traj:
+            read_func = read_traj_zipped
+        else:
+            read_func = read_traj
+
+        for frame in read_func(traj):
             try:
                 if counter % clargs.freq == 0:
                     print(counter, flush=True)

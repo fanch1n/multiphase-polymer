@@ -337,7 +337,5 @@ if __name__ == "__main__":
     im = ax_insert.imshow(config)
     ax_insert.set_axis_off()
     if clargs.output:
-        # if clargs.plot_fitness:
-        #    out_config = clargs.output + "-rmse-%.3f-%.3f.png" % (left_RMSE, right_RMSE)
         fig.tight_layout(pad=0.1)
         fig.savefig(out_profile)
