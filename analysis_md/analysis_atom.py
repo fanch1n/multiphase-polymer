@@ -4,7 +4,7 @@ import os
 import gzip, pickle
 
 
-def read_atom_file(f):
+def read_atom_file(f, sorted_mol=False):
     data = {}
     flag_time, flag_n, flag_box, pos = None, None, None, None
     atom_data = []
@@ -38,7 +38,18 @@ def read_atom_file(f):
             break
     data["atom"] = np.array(atom_data)
     data["box"] = box
-    # data['nmols'] = nchains
+    data["mol"] = None
+    if sorted_mol:
+        mol_labels = np.sort(np.unique((atom_data[:, 1])))
+        nmols = len(mol_lables)
+        mol_data = {}
+        for n in range(nmols):
+            mol_pos = atom_data[atom_data[:, 1] == mol_labels[n]]
+            mol_data[mol_labels[n]] = mol_pos[
+                mol_pos[:, 2].argsort()
+            ]  # sort based on atom types
+        data["mol"] = mol_data
+
     return data
 
 

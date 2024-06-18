@@ -49,7 +49,13 @@ if __name__ == "__main__":
             tag_map = {}
             foutput = stack.enter_context(gzip.open(clargs.tagged, "wb"))
 
-        for frame in read_traj(clargs.input):
+        read_func = None
+        if ".gz" in clargs.input:
+            read_func = read_traj_zipped
+        else:
+            read_func = read_traj
+
+        for frame in read_func(clargs.input):
             try:
                 atom_data = frame["atom"]
                 if not mol_sequence_map:
