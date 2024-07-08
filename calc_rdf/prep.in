@@ -1,0 +1,96 @@
+dimension	    3
+boundary	    p p p
+atom_style	    bond
+bond_style 	    fene
+pair_style	    lj/cut 3.0
+special_bonds	fene
+neighbor	    2.0 bin
+units lj
+timestep        1e-5
+
+read_data       REPLACE.dat
+
+PAIRCOEFF
+
+bond_coeff	    1 100.0 4.0 1.0 1.0
+
+### initial compression
+fix             1 all nvt temp 6.0 6.0 $(100.0*dt)
+velocity        all create 6.0 2023 mom yes rot yes dist gaussian
+fix             2 all deform 1 x final 0.0 100.0 y final 0.0 120.0 z final 0.0 240.0 units box
+
+log             REPLACE.log
+
+thermo          100000
+thermo_style    custom step lx ly lz pxx pyy pzz fmax temp pe density
+
+
+run             0
+
+
+run             100000
+
+unfix           1
+unfix           2
+
+fix             1 all nvt temp 2.0 2.0 $(100.0*dt)
+velocity        all create 2.0 2023 mom yes rot yes dist gaussian
+fix             2 all deform 1 x final 0.0 30.0 y final 0.0 30.0 z final 0.0 30.0 units box
+run             500000
+
+
+
+unfix           1
+unfix           2
+
+timestep        1e-4
+fix             1 all nvt temp 1.0 1.0 $(100.0*dt)
+velocity        all create 1.0 2023 mom yes rot yes dist gaussian
+fix             2 all deform 1 x final 0.0 25.0 y final 0.0 25.0 z final 0.0 25.0 units box
+run             100000
+
+
+####################### NPT
+
+timestep        1e-3
+
+velocity        all create 1.0 2023 mom yes rot yes dist gaussian
+fix             1 all npt temp 1.0 1.0 $(100.0*dt) iso 0.0 0.0 $(100.0*dt)
+run	            1000000
+
+unfix           1
+fix             1 all npt temp 1.0 1.0 $(100.0*dt) iso 0.0 0.0 $(100.0*dt)
+run	            1000000
+
+unfix           1
+fix             1 all nvt temp 1.0 1.0 $(100.0*dt)
+run	            2000000
+
+#write_dump      all custom eq-REPLACE.atom id mol type xu yu zu
+#write_restart   eq-REPLACE.restart
+
+####################### Duplicate the simulation box 2 times in x, y and z
+
+unfix           1
+replicate       2 2 2
+
+fix             1 all nvt temp 1.0 1.0 $(100.0*dt)
+velocity        all create 1.0 2023 mom yes rot yes dist gaussian
+
+run	            10000000
+
+compute         chunkmol all chunk/atom molecule
+compute         molcom all com/chunk chunkmol
+
+fix             2 all ave/time 10000 1 10000 c_molcom[*] file mol_com.dat mode vector
+
+compute         molgyr all gyration/chunk chunkmol
+fix             3 all ave/time 10000 1 10000 c_molgyr file mol_gyration.dat mode vector
+
+compute         myRDF all rdf 100 1 1 1 2 1 3 2 2 2 3 3 3
+fix             4 all ave/time 10000 1 10000 c_myRDF[*] file monomer_rdf.dat mode vector
+
+run	            5000000
+
+write_dump all  custom end-phase-0.atom id mol type xu yu zu
+write_restart   end-REPLACE.restart
